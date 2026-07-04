@@ -14,81 +14,87 @@
  */
 
 const ALLOWED_VOICES = new Set([
-  "en-US-JennyNeural",
-  "en-US-GuyNeural",
-  "en-US-AriaNeural",
-  "en-GB-SoniaNeural",
-  "en-AU-NatashaNeural",
+  'en-US-JennyNeural',
+  'en-US-GuyNeural',
+  'en-US-AriaNeural',
+  'en-GB-SoniaNeural',
+  'en-AU-NatashaNeural',
 ]);
 
 const MAX_TEXT_LEN = 500; // 남용 방지: 질문 한 문단이면 충분
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*", // 필요 시 "https://SongMin21.github.io" 로 제한
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  'Access-Control-Allow-Origin': '*', // 필요 시 "https://SongMin21.github.io" 로 제한
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
 
 function esc(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export default {
   async fetch(request, env) {
-    if (request.method === "OPTIONS") {
+    if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
-    if (request.method !== "POST") {
-      return new Response("POST only", { status: 405, headers: CORS });
+    if (request.method !== 'POST') {
+      return new Response('POST only', { status: 405, headers: CORS });
     }
 
     let body;
     try {
       body = await request.json();
     } catch {
-      return new Response("invalid JSON", { status: 400, headers: CORS });
+      return new Response('invalid JSON', { status: 400, headers: CORS });
     }
 
-    const text = (body.text || "").trim();
-    const voice = ALLOWED_VOICES.has(body.voice) ? body.voice : "en-US-JennyNeural";
+    const text = (body.text || '').trim();
+    const voice = ALLOWED_VOICES.has(body.voice)
+      ? body.voice
+      : 'en-US-JennyNeural';
 
     if (!text || text.length > MAX_TEXT_LEN) {
-      return new Response("text required (max " + MAX_TEXT_LEN + " chars)", {
+      return new Response('text required (max ' + MAX_TEXT_LEN + ' chars)', {
         status: 400,
         headers: CORS,
       });
     }
 
     const ssml =
-      `<speak version='1.0' xml:lang='en-US'>` +
+      `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>` +
       `<voice name='${voice}'><prosody rate='-5%'>${esc(text)}</prosody></voice>` +
       `</speak>`;
 
     const azureRes = await fetch(
       `https://${env.AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
       {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Ocp-Apim-Subscription-Key": env.AZURE_KEY,
-          "Content-Type": "application/ssml+xml",
-          "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+          'Ocp-Apim-Subscription-Key': env.AZURE_KEY,
+          'Content-Type': 'application/ssml+xml',
+          'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+          'User-Agent': 'toeic-speaking-drill',
         },
         body: ssml,
-      }
+      },
     );
 
     if (!azureRes.ok) {
-      return new Response("azure error " + azureRes.status, {
-        status: 502,
-        headers: CORS,
-      });
+      const detail = await azureRes.text().catch(() => '');
+      return new Response(
+        'azure error ' +
+          azureRes.status +
+          (detail ? ': ' + detail.slice(0, 500) : ''),
+        { status: 502, headers: CORS },
+      );
     }
 
     return new Response(azureRes.body, {
       headers: {
         ...CORS,
-        "Content-Type": "audio/mpeg",
-        "Cache-Control": "public, max-age=604800", // 같은 문장 1주 캐시 → 쿼터 절약
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=604800', // 같은 문장 1주 캐시 → 쿼터 절약
       },
     });
   },
