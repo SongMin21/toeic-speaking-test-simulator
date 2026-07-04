@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TOEIC Speaking Drill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a2238;
+    --ink-soft: #4a5370;
+    --ink-faint: #8b93ab;
+    --paper: #fafaf8;
+    --card: #ffffff;
+    --line: #e4e4de;
+    --prep: #e8a33d;
+    --prep-bg: #fdf4e3;
+    --answer: #2d5bff;
+    --answer-bg: #eaefff;
+    --done: #1d9e75;
+    --done-bg: #e1f5ee;
+    --danger: #d85a30;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "IBM Plex Sans KR", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  header h1 span { color: var(--answer); }
+  .sync-badge { font-size: 12px; color: var(--ink-faint); display: flex; align-items: center; gap: 5px; }
+  .sync-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); }
+  .sync-badge.on .dot { background: var(--done); }
+  .sync-badge.on { color: var(--done); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--ink-soft); margin-bottom: 14px; letter-spacing: 0.02em; }
+
+  .settings-row { display: flex; gap: 12px; }
+  .settings-row .field { flex: 1; }
+  label { display: block; font-size: 12px; color: var(--ink-faint); margin-bottom: 5px; }
+  input[type="number"], input[type="text"], input[type="password"], textarea, select {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+    background: var(--paper); outline: none; transition: border-color .15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--answer); }
+  select { cursor: pointer; }
+  .hint { font-size: 12px; color: var(--ink-faint); margin-top: 10px; }
+  .hint.ok { color: var(--done); }
+  .hint.err { color: var(--danger); }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
+
+  button {
+    font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 9px; padding: 10px 16px; transition: background .12s, transform .08s;
+  }
+  button:hover { background: var(--paper); }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  button.primary:hover { background: #2b3452; }
+  button.accent { background: var(--answer); color: #fff; border-color: var(--answer); }
+  button.accent:hover { background: #1f47d6; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .add-row { display: flex; gap: 10px; margin-top: 10px; }
+  .add-row button { flex-shrink: 0; align-self: flex-end; }
+
+  .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .list-head h2 { margin-bottom: 0; }
+  .list-head-btns { display: flex; gap: 6px; }
+  button.mini { font-size: 12px; padding: 5px 10px; border-radius: 7px; color: var(--ink-soft); }
+
+  ul.qlist { list-style: none; }
+  ul.qlist li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 4px; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.5;
+  }
+  ul.qlist li input[type="checkbox"] {
+    margin-top: 3px; width: 16px; height: 16px; accent-color: var(--answer);
+    cursor: pointer; flex-shrink: 0;
+  }
+  ul.qlist li .txt { cursor: pointer; }
+  ul.qlist li.unchecked .txt { color: var(--ink-faint); }
+  ul.qlist li:last-child { border-bottom: none; }
+  ul.qlist li .num { color: var(--ink-faint); font-size: 12px; padding-top: 2px; min-width: 20px; }
+  ul.qlist li .txt { flex: 1; }
+  ul.qlist li .del {
+    border: none; background: none; color: var(--ink-faint); padding: 2px 6px; font-size: 15px;
+  }
+  ul.qlist li .del:hover { color: var(--danger); background: none; }
+  .empty { color: var(--ink-faint); font-size: 14px; padding: 12px 0; }
+
+  /* 연습 화면 */
+  .stage { text-align: center; padding: 28px 20px 32px; }
+  .phase-tag {
+    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 5px 14px; border-radius: 99px; margin-bottom: 18px;
+  }
+  .phase-tag.idle { background: var(--paper); color: var(--ink-faint); border: 1px solid var(--line); }
+  .phase-tag.reading { background: var(--ink); color: #fff; }
+  .phase-tag.prep { background: var(--prep-bg); color: #9a6410; }
+  .phase-tag.answer { background: var(--answer-bg); color: var(--answer); }
+  .phase-tag.done { background: var(--done-bg); color: var(--done); }
+
+  .question-text { font-size: 17px; line-height: 1.65; margin: 0 auto 22px; max-width: 560px; min-height: 56px; }
+  .question-text.hidden-q { color: var(--ink-faint); font-style: italic; }
+
+  .timer-num {
+    font-family: "IBM Plex Mono", monospace; font-size: 72px; font-weight: 500;
+    font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 14px; letter-spacing: -0.03em;
+  }
+  .timer-num.prep { color: var(--prep); }
+  .timer-num.answer { color: var(--answer); }
+  .timer-num.done { color: var(--done); }
+
+  .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; max-width: 420px; margin: 0 auto 26px; }
+  .bar .fill { height: 100%; width: 0%; border-radius: 99px; background: var(--ink-faint); transition: width .95s linear; }
+  .bar .fill.prep { background: var(--prep); }
+  .bar .fill.answer { background: var(--answer); }
+
+  .stage-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .progress-label { font-size: 13px; color: var(--ink-faint); margin-bottom: 8px; }
+
+  .options-row { display: flex; gap: 16px; justify-content: center; margin-top: 16px; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; }
+  .options-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); margin: 0; cursor: pointer; }
+
+  footer { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 8px; }
+  @media (max-width: 480px) {
+    .timer-num { font-size: 56px; }
+    .settings-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TOEIC <span>Speaking</span> Drill</h1>
+    <div class="sync-badge" id="syncBadge"><span class="dot"></span><span id="syncText">로컬 저장 모드</span></div>
+  </header>
+
+  <!-- 연습 스테이지 -->
+  <section class="card stage">
+    <div class="progress-label" id="progressLabel">문장을 추가하고 시작하세요</div>
+    <div class="phase-tag idle" id="phaseTag">대기</div>
+    <p class="question-text" id="questionText">아래에서 연습할 문장을 등록한 뒤 [연습 시작]을 누르면, 질문을 읽어주고 준비 → 답변 타이머가 자동으로 진행됩니다.</p>
+    <div class="timer-num" id="timerNum">--</div>
+    <div class="bar"><div class="fill" id="barFill"></div></div>
+    <div class="stage-controls">
+      <button class="accent" id="startBtn">▶ 연습 시작</button>
+      <button id="skipBtn" disabled>건너뛰기 →</button>
+      <button id="stopBtn" disabled>중지</button>
+    </div>
+    <div class="options-row">
+      <label><input type="checkbox" id="hideChk"> 질문 숨기기 (듣기만)</label>
+      <label><input type="checkbox" id="autoChk" checked> 다음 문제 자동 진행</label>
+    </div>
+    <div class="options-row" style="margin-top:8px; font-size:12px; color:var(--ink-faint);">
+      선택한 문장이 무작위 순서로 출제됩니다
+    </div>
+  </section>
+
+  <!-- 시간 설정 -->
+  <section class="card">
+    <h2>타이머 설정</h2>
+    <div class="settings-row">
+      <div class="field">
+        <label for="prepSec">준비 시간 (초)</label>
+        <input type="number" id="prepSec" min="0" max="300" value="45" />
+      </div>
+      <div class="field">
+        <label for="answerSec">답변 시간 (초)</label>
+        <input type="number" id="answerSec" min="5" max="600" value="60" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Azure Speech 설정 -->
+  <section class="card">
+    <h2>음성 설정</h2>
+    <div class="field" style="margin-bottom:12px">
+      <label for="ttsProxy">TTS 프록시 URL (팀 공유 · 권장)</label>
+      <input type="text" id="ttsProxy" placeholder="https://toeic-tts.xxxx.workers.dev" autocomplete="off" />
+    </div>
+    <div class="settings-row">
+      <div class="field">
+        <label for="azureKey">또는 개인 Azure 키 (이 브라우저에만 저장)</label>
+        <input type="password" id="azureKey" placeholder="프록시 사용 시 비워두세요" autocomplete="off" />
+      </div>
+      <div class="field" style="max-width:150px">
+        <label for="azureRegion">리전</label>
+        <input type="text" id="azureRegion" placeholder="koreacentral" />
+      </div>
+      <div class="field" style="max-width:200px">
+        <label for="azureVoice">목소리</label>
+        <select id="azureVoice">
+          <option value="en-US-JennyNeural">Jenny (US, 여)</option>
+          <option value="en-US-GuyNeural">Guy (US, 남)</option>
+          <option value="en-US-AriaNeural">Aria (US, 여)</option>
+          <option value="en-GB-SoniaNeural">Sonia (UK, 여)</option>
+          <option value="en-AU-NatashaNeural">Natasha (AU, 여)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+      <button class="mini" id="ttsTestBtn">🔊 음성 테스트</button>
+      <p class="hint" id="azureStatus" style="margin-top:0">프록시/키 미입력 — 브라우저 내장 TTS로 동작 중</p>
+    </div>
+  </section>
+
+  <!-- 문장 등록 -->
+  <section class="card">
+    <h2>연습 문장 추가</h2>
+    <div class="add-row">
+      <div style="flex:1">
+        <textarea id="newQ" placeholder="예: Do you agree or disagree with the following statement? The Internet is the best source of information."></textarea>
+      </div>
+      <button class="primary" id="addBtn">추가</button>
+    </div>
+  </section>
+
+  <!-- 문장 목록 -->
+  <section class="card">
+    <div class="list-head">
+      <h2>등록된 문장 (<span id="qCount">0</span>) · 선택 <span id="selCount">0</span>개</h2>
+      <div class="list-head-btns">
+        <button class="mini" id="selectAllBtn">전체 선택</button>
+        <button class="mini" id="clearAllBtn">전체 해제</button>
+      </div>
+    </div>
+    <ul class="qlist" id="qList"></ul>
+    <p class="empty" id="emptyMsg">아직 등록된 문장이 없습니다.</p>
+  </section>
+
+  <footer>질문 음성: 브라우저 내장 TTS (en-US) · 데이터: <span id="footerStore">localStorage</span></footer>
+</div>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   Firebase 설정
+   - Firebase 콘솔 > 프로젝트 설정 > 일반 > 내 앱 > SDK 설정에서
+     firebaseConfig 값을 복사해 아래에 붙여넣으세요.
+   - 비워두면 자동으로 localStorage 모드로 동작합니다 (기기 내 저장).
+   ============================================================ */
+const firebaseConfig = {
+  // apiKey: "...",
+  // authDomain: "...",
+  // databaseURL: "https://YOUR-PROJECT-default-rtdb.firebaseio.com",
+  // projectId: "...",
+  // appId: "..."
+};
+
+const DB_PATH = "toeic-speaking/questions";
+const useFirebase = !!firebaseConfig.databaseURL;
+let db = null;
+
+/* ---------- 상태 ---------- */
+let questions = [];            // [{ id, text }]
+let order = [];                // 이번 세션의 진행 순서 (index 배열)
+let cursor = -1;               // order 상의 현재 위치
+let phase = "idle";            // idle | reading | prep | answer | done
+let tickHandle = null;
+let running = false;
+
+/* ---------- DOM ---------- */
+const $ = (id) => document.getElementById(id);
+const els = {
+  syncBadge: $("syncBadge"), syncText: $("syncText"), footerStore: $("footerStore"),
+  progressLabel: $("progressLabel"), phaseTag: $("phaseTag"),
+  questionText: $("questionText"), timerNum: $("timerNum"), barFill: $("barFill"),
+  startBtn: $("startBtn"), skipBtn: $("skipBtn"), stopBtn: $("stopBtn"),
+  hideChk: $("hideChk"), autoChk: $("autoChk"),
+  prepSec: $("prepSec"), answerSec: $("answerSec"),
+  newQ: $("newQ"), addBtn: $("addBtn"),
+  qList: $("qList"), qCount: $("qCount"), emptyMsg: $("emptyMsg"),
+  selCount: $("selCount"), selectAllBtn: $("selectAllBtn"), clearAllBtn: $("clearAllBtn"),
+  azureKey: $("azureKey"), azureRegion: $("azureRegion"), azureVoice: $("azureVoice"), azureStatus: $("azureStatus"),
+  ttsProxy: $("ttsProxy"), ttsTestBtn: $("ttsTestBtn"),
+};
+
+/* ---------- 저장소 (Firebase ↔ localStorage) ---------- */
+function initStore() {
+  if (useFirebase) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref(DB_PATH).on("value", (snap) => {
+      const val = snap.val() || {};
+      questions = Object.entries(val).map(([id, v]) => ({ id, text: v.text }));
+      questions.sort((a, b) => (a.id < b.id ? -1 : 1));
+      renderList();
+    });
+    els.syncBadge.classList.add("on");
+    els.syncText.textContent = "Firebase 동기화 중";
+    els.footerStore.textContent = "Firebase Realtime DB";
+  } else {
+    try {
+      questions = JSON.parse(localStorage.getItem(DB_PATH) || "[]");
+    } catch { questions = []; }
+    renderList();
+  }
+}
+function saveLocal() {
+  localStorage.setItem(DB_PATH, JSON.stringify(questions));
+}
+function addQuestion(text) {
+  if (useFirebase) {
+    const ref = db.ref(DB_PATH).push({ text, createdAt: Date.now() });
+    selected.add(ref.key); saveSelected();
+  } else {
+    const id = String(Date.now());
+    questions.push({ id, text });
+    selected.add(id); saveSelected();
+    saveLocal(); renderList();
+  }
+}
+function deleteQuestion(id) {
+  if (useFirebase) {
+    db.ref(DB_PATH + "/" + id).remove();
+  } else {
+    questions = questions.filter((q) => q.id !== id);
+    saveLocal(); renderList();
+  }
+}
+
+/* ---------- 문장 선택 상태 ---------- */
+const SEL_KEY = "toeic-speaking/selected";
+let selected = new Set(JSON.parse(localStorage.getItem(SEL_KEY) || "[]"));
+function saveSelected() {
+  localStorage.setItem(SEL_KEY, JSON.stringify([...selected]));
+}
+function toggleSelect(id, on) {
+  if (on) selected.add(id); else selected.delete(id);
+  saveSelected(); renderList();
+}
+
+/* ---------- 목록 렌더 ---------- */
+function renderList() {
+  // 삭제된 문장의 선택 상태 정리
+  const ids = new Set(questions.map((q) => q.id));
+  [...selected].forEach((id) => { if (!ids.has(id)) selected.delete(id); });
+
+  els.qCount.textContent = questions.length;
+  els.selCount.textContent = selected.size;
+  els.emptyMsg.style.display = questions.length ? "none" : "block";
+  els.qList.innerHTML = "";
+  questions.forEach((q, i) => {
+    const li = document.createElement("li");
+    const isSel = selected.has(q.id);
+    if (!isSel) li.classList.add("unchecked");
+    const chk = document.createElement("input");
+    chk.type = "checkbox"; chk.checked = isSel;
+    chk.onchange = () => toggleSelect(q.id, chk.checked);
+    const num = document.createElement("span"); num.className = "num"; num.textContent = i + 1;
+    const txt = document.createElement("span"); txt.className = "txt"; txt.textContent = q.text;
+    txt.onclick = () => toggleSelect(q.id, !selected.has(q.id));
+    const del = document.createElement("button"); del.className = "del"; del.textContent = "✕";
+    del.title = "삭제"; del.onclick = () => deleteQuestion(q.id);
+    li.append(chk, num, txt, del);
+    els.qList.appendChild(li);
+  });
+}
+
+/* ---------- 설정 저장 ---------- */
+function loadSettings() {
+  const s = JSON.parse(localStorage.getItem("toeic-speaking/settings") || "{}");
+  if (s.prep) els.prepSec.value = s.prep;
+  if (s.answer) els.answerSec.value = s.answer;
+}
+function saveSettings() {
+  localStorage.setItem("toeic-speaking/settings", JSON.stringify({
+    prep: +els.prepSec.value, answer: +els.answerSec.value,
+  }));
+}
+els.prepSec.addEventListener("change", saveSettings);
+els.answerSec.addEventListener("change", saveSettings);
+
+/* ---------- 비프음 (Web Audio) ---------- */
+let audioCtx = null;
+function beep(freq = 880, dur = 0.18, count = 1) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  for (let i = 0; i < count; i++) {
+    const t = audioCtx.currentTime + i * 0.28;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = freq; osc.type = "sine";
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + dur);
+  }
+}
+
+/* ---------- TTS: 프록시 > 개인 Azure 키 > 브라우저 TTS ---------- */
+/* 팀 배포 시: 아래 DEFAULT_PROXY에 Worker URL을 넣고 커밋하면
+   팀원 전원이 설정 없이 바로 Azure 음성을 사용합니다. (키가 아니라 안전) */
+const DEFAULT_PROXY = "";
+
+const AZ_KEY = "toeic-speaking/azure";
+const audioCache = new Map(); // text|voice → blob URL (API 호출 절약)
+let currentAudio = null;
+
+function azureSettings() {
+  return {
+    proxy: (els.ttsProxy.value.trim() || DEFAULT_PROXY).replace(/\/+$/, ""),
+    key: els.azureKey.value.trim(),
+    region: els.azureRegion.value.trim() || "koreacentral",
+    voice: els.azureVoice.value,
+  };
+}
+function voiceLabel(v) { return v.split("-").pop().replace("Neural", ""); }
+function saveAzure() {
+  const s = azureSettings();
+  localStorage.setItem(AZ_KEY, JSON.stringify({ proxy: els.ttsProxy.value.trim(), key: s.key, region: s.region, voice: s.voice }));
+  if (s.proxy) updateAzureStatus("팀 프록시로 Azure 음성 사용 중 (" + voiceLabel(s.voice) + ")", "ok");
+  else if (s.key) updateAzureStatus("개인 키로 Azure 음성 사용 중 (" + voiceLabel(s.voice) + ")", "ok");
+  else updateAzureStatus("프록시/키 미입력 — 브라우저 내장 TTS로 동작 중", "");
+}
+function loadAzure() {
+  try {
+    const s = JSON.parse(localStorage.getItem(AZ_KEY) || "{}");
+    if (s.proxy) els.ttsProxy.value = s.proxy;
+    if (s.key) els.azureKey.value = s.key;
+    if (s.region) els.azureRegion.value = s.region;
+    if (s.voice) els.azureVoice.value = s.voice;
+  } catch {}
+  saveAzure(); // 상태 표시 갱신 (DEFAULT_PROXY 반영)
+}
+function updateAzureStatus(msg, cls) {
+  els.azureStatus.textContent = msg;
+  els.azureStatus.className = "hint " + (cls || "");
+}
+
+async function playBlobUrl(url, onEnd) {
+  currentAudio = new Audio(url);
+  currentAudio.onended = onEnd;
+  currentAudio.onerror = onEnd;
+  await currentAudio.play();
+}
+
+async function proxySpeak(text, onEnd) {
+  const { proxy, voice } = azureSettings();
+  const cacheKey = "proxy|" + voice + "|" + text;
+  try {
+    let url = audioCache.get(cacheKey);
+    if (!url) {
+      const res = await fetch(proxy, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      url = URL.createObjectURL(await res.blob());
+      audioCache.set(cacheKey, url);
+    }
+    await playBlobUrl(url, onEnd);
+  } catch (e) {
+    updateAzureStatus("프록시 호출 실패 (" + e.message + ") — 브라우저 TTS로 대체합니다.", "err");
+    browserSpeak(text, onEnd);
+  }
+}
+
+/* 개인 키 모드: REST는 브라우저 CORS에 막히므로 공식 Speech SDK(WebSocket) 사용 */
+let sdkLoading = null;
+function loadSpeechSDK() {
+  if (window.SpeechSDK) return Promise.resolve();
+  if (sdkLoading) return sdkLoading;
+  sdkLoading = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.40.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js";
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("SDK 로드 실패"));
+    document.head.appendChild(s);
+  });
+  return sdkLoading;
+}
+
+async function azureSpeak(text, onEnd) {
+  const { key, region, voice } = azureSettings();
+  const cacheKey = "direct|" + voice + "|" + text;
+  try {
+    let url = audioCache.get(cacheKey);
+    if (!url) {
+      await loadSpeechSDK();
+      const cfg = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+      cfg.speechSynthesisVoiceName = voice;
+      cfg.speechSynthesisOutputFormat = SpeechSDK.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
+      const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='${voice}'><prosody rate='-5%'>${text
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</prosody></voice></speak>`;
+      const audioData = await new Promise((resolve, reject) => {
+        // audioConfig를 null로 두면 SDK가 직접 재생하지 않고 데이터만 반환 → 종료 시점 제어 가능
+        const synth = new SpeechSDK.SpeechSynthesizer(cfg, null);
+        synth.speakSsmlAsync(
+          ssml,
+          (result) => {
+            synth.close();
+            if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) resolve(result.audioData);
+            else reject(new Error(result.errorDetails || "합성 실패"));
+          },
+          (err) => { synth.close(); reject(new Error(err)); }
+        );
+      });
+      url = URL.createObjectURL(new Blob([audioData], { type: "audio/mpeg" }));
+      audioCache.set(cacheKey, url);
+    }
+    await playBlobUrl(url, onEnd);
+  } catch (e) {
+    updateAzureStatus("Azure 호출 실패 (" + (e.message || e) + ") — 브라우저 TTS로 대체합니다. 키/리전을 확인하세요.", "err");
+    browserSpeak(text, onEnd);
+  }
+}
+
+function browserSpeak(text, onEnd) {
+  if (!("speechSynthesis" in window)) { onEnd(); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.95;
+  const voices = speechSynthesis.getVoices();
+  const en = voices.find((v) => v.lang === "en-US") || voices.find((v) => v.lang.startsWith("en"));
+  if (en) u.voice = en;
+  u.onend = onEnd;
+  u.onerror = onEnd;
+  speechSynthesis.speak(u);
+}
+
+function speak(text, onEnd) {
+  const s = azureSettings();
+  if (s.proxy) proxySpeak(text, onEnd);
+  else if (s.key) azureSpeak(text, onEnd);
+  else browserSpeak(text, onEnd);
+}
+function stopSpeaking() {
+  speechSynthesis.cancel();
+  if (currentAudio) { currentAudio.pause(); currentAudio.onended = null; currentAudio = null; }
+}
+if ("speechSynthesis" in window) speechSynthesis.getVoices(); // 보이스 프리로드
+
+/* ---------- 화면 상태 ---------- */
+function setPhase(p, label) {
+  phase = p;
+  els.phaseTag.className = "phase-tag " + p;
+  els.phaseTag.textContent = label;
+  els.timerNum.className = "timer-num " + p;
+  els.barFill.className = "fill " + p;
+}
+function setTimer(remain, total) {
+  els.timerNum.textContent = remain;
+  els.barFill.style.width = total ? ((total - remain) / total) * 100 + "%" : "0%";
+}
+function clearTick() { if (tickHandle) { clearInterval(tickHandle); tickHandle = null; } }
+
+/* ---------- 카운트다운 ---------- */
+function countdown(seconds, onDone) {
+  let remain = seconds;
+  setTimer(remain, seconds);
+  tickHandle = setInterval(() => {
+    remain--;
+    setTimer(Math.max(remain, 0), seconds);
+    if (remain <= 3 && remain > 0) beep(660, 0.1);
+    if (remain <= 0) { clearTick(); onDone(); }
+  }, 1000);
+}
+
+/* ---------- 연습 흐름 ---------- */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function startSession() {
+  if (!questions.length) { alert("먼저 연습할 문장을 추가해주세요."); return; }
+  const picked = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => selected.has(q.id))
+    .map(({ i }) => i);
+  if (!picked.length) { alert("연습할 문장을 목록에서 체크해주세요."); return; }
+  saveSettings();
+  order = shuffle(picked); // 선택한 문장을 무작위 순서로
+  cursor = -1;
+  running = true;
+  els.startBtn.disabled = true;
+  els.skipBtn.disabled = false;
+  els.stopBtn.disabled = false;
+  nextQuestion();
+}
+function nextQuestion() {
+  clearTick();
+  stopSpeaking();
+  cursor++;
+  if (cursor >= order.length) { finishSession(); return; }
+
+  const q = questions[order[cursor]];
+  els.progressLabel.textContent = `문제 ${cursor + 1} / ${order.length}`;
+  if (els.hideChk.checked) {
+    els.questionText.textContent = "(질문 숨김 — 음성을 듣고 답하세요)";
+    els.questionText.classList.add("hidden-q");
+  } else {
+    els.questionText.textContent = q.text;
+    els.questionText.classList.remove("hidden-q");
+  }
+
+  setPhase("reading", "질문 읽는 중");
+  els.timerNum.textContent = "🔊";
+  els.barFill.style.width = "0%";
+
+  speak(q.text, () => {
+    if (!running) return;
+    const prep = Math.max(0, +els.prepSec.value || 0);
+    const ans = Math.max(5, +els.answerSec.value || 60);
+    if (prep > 0) {
+      setPhase("prep", "준비 시간");
+      beep(880, 0.15);
+      countdown(prep, () => startAnswer(ans));
+    } else {
+      startAnswer(ans);
+    }
+  });
+}
+function startAnswer(ans) {
+  if (!running) return;
+  setPhase("answer", "답변 시간 — 말하세요!");
+  beep(880, 0.15, 2);
+  countdown(ans, () => {
+    beep(523, 0.3);
+    setPhase("done", "완료");
+    els.timerNum.textContent = "✓";
+    if (els.autoChk.checked && running) {
+      setTimeout(() => { if (running) nextQuestion(); }, 1800);
+    }
+  });
+}
+function finishSession() {
+  running = false;
+  clearTick();
+  setPhase("done", "세트 완료!");
+  els.timerNum.textContent = "🎉";
+  els.questionText.textContent = "모든 문제를 완료했습니다. 수고하셨어요!";
+  els.questionText.classList.remove("hidden-q");
+  els.progressLabel.textContent = `총 ${order.length}문제 연습 완료`;
+  els.startBtn.disabled = false;
+  els.skipBtn.disabled = true;
+  els.stopBtn.disabled = true;
+}
+function stopSession() {
+  running = false;
+  clearTick();
+  stopSpeaking();
+  setPhase("idle", "대기");
+  els.timerNum.textContent = "--";
+  els.barFill.style.width = "0%";
+  els.questionText.textContent = "연습이 중지되었습니다. [연습 시작]으로 다시 시작하세요.";
+  els.questionText.classList.remove("hidden-q");
+  els.progressLabel.textContent = "대기 중";
+  els.startBtn.disabled = false;
+  els.skipBtn.disabled = true;
+  els.stopBtn.disabled = true;
+}
+
+/* ---------- 이벤트 ---------- */
+els.startBtn.onclick = startSession;
+els.skipBtn.onclick = () => { if (running) nextQuestion(); };
+els.stopBtn.onclick = stopSession;
+els.addBtn.onclick = () => {
+  const text = els.newQ.value.trim();
+  if (!text) return;
+  addQuestion(text);
+  els.newQ.value = "";
+  els.newQ.focus();
+};
+els.newQ.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) els.addBtn.click();
+});
+els.selectAllBtn.onclick = () => {
+  questions.forEach((q) => selected.add(q.id));
+  saveSelected(); renderList();
+};
+els.clearAllBtn.onclick = () => {
+  selected.clear();
+  saveSelected(); renderList();
+};
+
+["ttsProxy", "azureKey", "azureRegion", "azureVoice"].forEach((id) => {
+  els[id].addEventListener("change", () => { saveAzure(); audioCache.clear(); });
+});
+els.ttsTestBtn.onclick = () => {
+  saveAzure();
+  els.ttsTestBtn.disabled = true;
+  speak("This is a voice test for the TOEIC Speaking drill.", () => {
+    els.ttsTestBtn.disabled = false;
+  });
+  setTimeout(() => { els.ttsTestBtn.disabled = false; }, 10000); // 안전장치
+};
+
+/* ---------- 초기화 ---------- */
+loadSettings();
+loadAzure();
+initStore();
+</script>
+</body>
+</html>
