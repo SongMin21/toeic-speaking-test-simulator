@@ -232,6 +232,9 @@
         font-size: 14px;
         line-height: 1.5;
       }
+      ul.qlist li:last-child {
+        border-bottom: none;
+      }
       ul.qlist li input[type='checkbox'] {
         margin-top: 3px;
         width: 16px;
@@ -242,21 +245,16 @@
       }
       ul.qlist li .txt {
         cursor: pointer;
+        flex: 1;
       }
       ul.qlist li.unchecked .txt {
         color: var(--ink-faint);
-      }
-      ul.qlist li:last-child {
-        border-bottom: none;
       }
       ul.qlist li .num {
         color: var(--ink-faint);
         font-size: 12px;
         padding-top: 2px;
         min-width: 20px;
-      }
-      ul.qlist li .txt {
-        flex: 1;
       }
       ul.qlist li .del {
         border: none;
@@ -273,6 +271,23 @@
         color: var(--ink-faint);
         font-size: 14px;
         padding: 12px 0;
+      }
+
+      ul.qlist li.topic-header {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        background: var(--paper);
+        padding: 14px 4px 5px;
+        border-bottom: 1px solid var(--line);
+        margin-top: 4px;
+      }
+      ul.qlist li.topic-header:first-child {
+        margin-top: 0;
+        padding-top: 4px;
       }
 
       /* 연습 화면 */
@@ -454,7 +469,7 @@
         </div>
       </section>
 
-      <!-- 시간 설정 -->
+      <!-- 타이머 설정 -->
       <section class="card">
         <h2>타이머 설정</h2>
         <div class="settings-row">
@@ -469,63 +484,17 @@
         </div>
       </section>
 
-      <!-- Azure Speech 설정 -->
-      <section class="card">
-        <h2>음성 설정</h2>
-        <div class="field" style="margin-bottom: 12px">
-          <label for="ttsProxy">TTS 프록시 URL (팀 공유 · 권장)</label>
-          <input
-            type="text"
-            id="ttsProxy"
-            placeholder="https://toeic-tts.xxxx.workers.dev"
-            autocomplete="off"
-          />
-        </div>
-        <div class="settings-row">
-          <div class="field">
-            <label for="azureKey"
-              >또는 개인 Azure 키 (이 브라우저에만 저장)</label
-            >
-            <input
-              type="password"
-              id="azureKey"
-              placeholder="프록시 사용 시 비워두세요"
-              autocomplete="off"
-            />
-          </div>
-          <div class="field" style="max-width: 150px">
-            <label for="azureRegion">리전</label>
-            <input type="text" id="azureRegion" placeholder="koreacentral" />
-          </div>
-          <div class="field" style="max-width: 200px">
-            <label for="azureVoice">목소리</label>
-            <select id="azureVoice">
-              <option value="en-US-JennyNeural">Jenny (US, 여)</option>
-              <option value="en-US-GuyNeural">Guy (US, 남)</option>
-              <option value="en-US-AriaNeural">Aria (US, 여)</option>
-              <option value="en-GB-SoniaNeural">Sonia (UK, 여)</option>
-              <option value="en-AU-NatashaNeural">Natasha (AU, 여)</option>
-            </select>
-          </div>
-        </div>
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-          "
-        >
-          <button class="mini" id="ttsTestBtn">🔊 음성 테스트</button>
-          <p class="hint" id="azureStatus" style="margin-top: 0">
-            프록시/키 미입력 — 브라우저 내장 TTS로 동작 중
-          </p>
-        </div>
-      </section>
-
       <!-- 문장 등록 -->
       <section class="card">
         <h2>연습 문장 추가</h2>
+        <div class="field" style="margin-bottom: 8px">
+          <label for="newTopic">주제</label>
+          <input
+            type="text"
+            id="newTopic"
+            placeholder="예: 의견 묻기, 일상 생활, 비즈니스"
+          />
+        </div>
         <div class="add-row">
           <div style="flex: 1">
             <textarea
@@ -554,7 +523,7 @@
       </section>
 
       <footer>
-        질문 음성: 브라우저 내장 TTS (en-US) · 데이터:
+        질문 음성: Azure Neural TTS · 데이터:
         <span id="footerStore">localStorage</span>
       </footer>
     </div>
@@ -565,9 +534,6 @@
     <script>
       /* ============================================================
    Firebase 설정
-   - Firebase 콘솔 > 프로젝트 설정 > 일반 > 내 앱 > SDK 설정에서
-     firebaseConfig 값을 복사해 아래에 붙여넣으세요.
-   - 비워두면 자동으로 localStorage 모드로 동작합니다 (기기 내 저장).
    ============================================================ */
       const firebaseConfig = {
         apiKey: 'AIzaSyC9mpi2MlCLZM_W_4GjlUPT9sOADSQM7TE',
@@ -585,9 +551,9 @@
       let db = null;
 
       /* ---------- 상태 ---------- */
-      let questions = []; // [{ id, text }]
-      let order = []; // 이번 세션의 진행 순서 (index 배열)
-      let cursor = -1; // order 상의 현재 위치
+      let questions = []; // [{ id, text, topic }]
+      let order = [];
+      let cursor = -1;
       let phase = 'idle'; // idle | reading | prep | answer | done
       let tickHandle = null;
       let running = false;
@@ -610,6 +576,7 @@
         autoChk: $('autoChk'),
         prepSec: $('prepSec'),
         answerSec: $('answerSec'),
+        newTopic: $('newTopic'),
         newQ: $('newQ'),
         addBtn: $('addBtn'),
         qList: $('qList'),
@@ -618,12 +585,6 @@
         selCount: $('selCount'),
         selectAllBtn: $('selectAllBtn'),
         clearAllBtn: $('clearAllBtn'),
-        azureKey: $('azureKey'),
-        azureRegion: $('azureRegion'),
-        azureVoice: $('azureVoice'),
-        azureStatus: $('azureStatus'),
-        ttsProxy: $('ttsProxy'),
-        ttsTestBtn: $('ttsTestBtn'),
       };
 
       /* ---------- 저장소 (Firebase ↔ localStorage) ---------- */
@@ -636,6 +597,7 @@
             questions = Object.entries(val).map(([id, v]) => ({
               id,
               text: v.text,
+              topic: v.topic || '',
             }));
             questions.sort((a, b) => (a.id < b.id ? -1 : 1));
             renderList();
@@ -655,14 +617,14 @@
       function saveLocal() {
         localStorage.setItem(DB_PATH, JSON.stringify(questions));
       }
-      function addQuestion(text) {
+      function addQuestion(text, topic) {
         if (useFirebase) {
-          const ref = db.ref(DB_PATH).push({ text, createdAt: Date.now() });
+          const ref = db.ref(DB_PATH).push({ text, topic, createdAt: Date.now() });
           selected.add(ref.key);
           saveSelected();
         } else {
           const id = String(Date.now());
-          questions.push({ id, text });
+          questions.push({ id, text, topic });
           selected.add(id);
           saveSelected();
           saveLocal();
@@ -692,9 +654,8 @@
         renderList();
       }
 
-      /* ---------- 목록 렌더 ---------- */
+      /* ---------- 목록 렌더 (주제별 그룹) ---------- */
       function renderList() {
-        // 삭제된 문장의 선택 상태 정리
         const ids = new Set(questions.map((q) => q.id));
         [...selected].forEach((id) => {
           if (!ids.has(id)) selected.delete(id);
@@ -704,28 +665,47 @@
         els.selCount.textContent = selected.size;
         els.emptyMsg.style.display = questions.length ? 'none' : 'block';
         els.qList.innerHTML = '';
-        questions.forEach((q, i) => {
-          const li = document.createElement('li');
-          const isSel = selected.has(q.id);
-          if (!isSel) li.classList.add('unchecked');
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.checked = isSel;
-          chk.onchange = () => toggleSelect(q.id, chk.checked);
-          const num = document.createElement('span');
-          num.className = 'num';
-          num.textContent = i + 1;
-          const txt = document.createElement('span');
-          txt.className = 'txt';
-          txt.textContent = q.text;
-          txt.onclick = () => toggleSelect(q.id, !selected.has(q.id));
-          const del = document.createElement('button');
-          del.className = 'del';
-          del.textContent = '✕';
-          del.title = '삭제';
-          del.onclick = () => deleteQuestion(q.id);
-          li.append(chk, num, txt, del);
-          els.qList.appendChild(li);
+
+        // 주제별 그룹화 (입력 순서 유지)
+        const groups = new Map();
+        questions.forEach((q) => {
+          const key = q.topic || '';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(q);
+        });
+
+        let globalIdx = 0;
+        groups.forEach((qs, topic) => {
+          if (topic) {
+            const header = document.createElement('li');
+            header.className = 'topic-header';
+            header.textContent = topic;
+            els.qList.appendChild(header);
+          }
+          qs.forEach((q) => {
+            globalIdx++;
+            const li = document.createElement('li');
+            const isSel = selected.has(q.id);
+            if (!isSel) li.classList.add('unchecked');
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = isSel;
+            chk.onchange = () => toggleSelect(q.id, chk.checked);
+            const num = document.createElement('span');
+            num.className = 'num';
+            num.textContent = globalIdx;
+            const txt = document.createElement('span');
+            txt.className = 'txt';
+            txt.textContent = q.text;
+            txt.onclick = () => toggleSelect(q.id, !selected.has(q.id));
+            const del = document.createElement('button');
+            del.className = 'del';
+            del.textContent = '✕';
+            del.title = '삭제';
+            del.onclick = () => deleteQuestion(q.id);
+            li.append(chk, num, txt, del);
+            els.qList.appendChild(li);
+          });
         });
       }
 
@@ -768,70 +748,12 @@
         }
       }
 
-      /* ---------- TTS: 프록시 > 개인 Azure 키 > 브라우저 TTS ---------- */
-      /* 팀 배포 시: 아래 DEFAULT_PROXY에 Worker URL을 넣고 커밋하면
-   팀원 전원이 설정 없이 바로 Azure 음성을 사용합니다. (키가 아니라 안전) */
+      /* ---------- TTS ---------- */
       const DEFAULT_PROXY = 'https://toeic-speaking-tts.songmin21.workers.dev';
+      const DEFAULT_VOICE = 'en-US-JennyNeural';
 
-      const AZ_KEY = 'toeic-speaking/azure';
-      const audioCache = new Map(); // text|voice → blob URL (API 호출 절약)
+      const audioCache = new Map();
       let currentAudio = null;
-
-      function azureSettings() {
-        return {
-          proxy: (els.ttsProxy.value.trim() || DEFAULT_PROXY).replace(
-            /\/+$/,
-            '',
-          ),
-          key: els.azureKey.value.trim(),
-          region: els.azureRegion.value.trim() || 'koreacentral',
-          voice: els.azureVoice.value,
-        };
-      }
-      function voiceLabel(v) {
-        return v.split('-').pop().replace('Neural', '');
-      }
-      function saveAzure() {
-        const s = azureSettings();
-        localStorage.setItem(
-          AZ_KEY,
-          JSON.stringify({
-            proxy: els.ttsProxy.value.trim(),
-            key: s.key,
-            region: s.region,
-            voice: s.voice,
-          }),
-        );
-        if (s.proxy)
-          updateAzureStatus(
-            '팀 프록시로 Azure 음성 사용 중 (' + voiceLabel(s.voice) + ')',
-            'ok',
-          );
-        else if (s.key)
-          updateAzureStatus(
-            '개인 키로 Azure 음성 사용 중 (' + voiceLabel(s.voice) + ')',
-            'ok',
-          );
-        else
-          updateAzureStatus(
-            '프록시/키 미입력 — 브라우저 내장 TTS로 동작 중',
-            '',
-          );
-      }
-      function loadAzure() {
-        try {
-          const s = JSON.parse(localStorage.getItem(AZ_KEY) || '{}');
-          if (s.proxy) els.ttsProxy.value = s.proxy;
-          if (s.key) els.azureKey.value = s.key;
-          if (s.region) els.azureRegion.value = s.region;
-          if (s.voice) els.azureVoice.value = s.voice;
-        } catch {}
-        saveAzure(); // 상태 표시 갱신 (DEFAULT_PROXY 반영)
-      }
-      function updateAzureStatus(msg, cls) {
-        els.azureStatus.textContent = msg;
-        els.azureStatus.className = 'hint ' + (cls || '');
-      }
 
       async function playBlobUrl(url, onEnd) {
         currentAudio = new Audio(url);
@@ -841,94 +763,21 @@
       }
 
       async function proxySpeak(text, onEnd) {
-        const { proxy, voice } = azureSettings();
-        const cacheKey = 'proxy|' + voice + '|' + text;
+        const cacheKey = DEFAULT_VOICE + '|' + text;
         try {
           let url = audioCache.get(cacheKey);
           if (!url) {
-            const res = await fetch(proxy, {
+            const res = await fetch(DEFAULT_PROXY, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, voice }),
+              body: JSON.stringify({ text, voice: DEFAULT_VOICE }),
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             url = URL.createObjectURL(await res.blob());
             audioCache.set(cacheKey, url);
           }
           await playBlobUrl(url, onEnd);
-        } catch (e) {
-          updateAzureStatus(
-            '프록시 호출 실패 (' + e.message + ') — 브라우저 TTS로 대체합니다.',
-            'err',
-          );
-          browserSpeak(text, onEnd);
-        }
-      }
-
-      /* 개인 키 모드: REST는 브라우저 CORS에 막히므로 공식 Speech SDK(WebSocket) 사용 */
-      let sdkLoading = null;
-      function loadSpeechSDK() {
-        if (window.SpeechSDK) return Promise.resolve();
-        if (sdkLoading) return sdkLoading;
-        sdkLoading = new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src =
-            'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.40.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
-          s.onload = resolve;
-          s.onerror = () => reject(new Error('SDK 로드 실패'));
-          document.head.appendChild(s);
-        });
-        return sdkLoading;
-      }
-
-      async function azureSpeak(text, onEnd) {
-        const { key, region, voice } = azureSettings();
-        const cacheKey = 'direct|' + voice + '|' + text;
-        try {
-          let url = audioCache.get(cacheKey);
-          if (!url) {
-            await loadSpeechSDK();
-            const cfg = SpeechSDK.SpeechConfig.fromSubscription(key, region);
-            cfg.speechSynthesisVoiceName = voice;
-            cfg.speechSynthesisOutputFormat =
-              SpeechSDK.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
-            const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='${voice}'><prosody rate='-5%'>${text
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')}</prosody></voice></speak>`;
-            const audioData = await new Promise((resolve, reject) => {
-              // audioConfig를 null로 두면 SDK가 직접 재생하지 않고 데이터만 반환 → 종료 시점 제어 가능
-              const synth = new SpeechSDK.SpeechSynthesizer(cfg, null);
-              synth.speakSsmlAsync(
-                ssml,
-                (result) => {
-                  synth.close();
-                  if (
-                    result.reason ===
-                    SpeechSDK.ResultReason.SynthesizingAudioCompleted
-                  )
-                    resolve(result.audioData);
-                  else reject(new Error(result.errorDetails || '합성 실패'));
-                },
-                (err) => {
-                  synth.close();
-                  reject(new Error(err));
-                },
-              );
-            });
-            url = URL.createObjectURL(
-              new Blob([audioData], { type: 'audio/mpeg' }),
-            );
-            audioCache.set(cacheKey, url);
-          }
-          await playBlobUrl(url, onEnd);
-        } catch (e) {
-          updateAzureStatus(
-            'Azure 호출 실패 (' +
-              (e.message || e) +
-              ') — 브라우저 TTS로 대체합니다. 키/리전을 확인하세요.',
-            'err',
-          );
+        } catch {
           browserSpeak(text, onEnd);
         }
       }
@@ -953,10 +802,7 @@
       }
 
       function speak(text, onEnd) {
-        const s = azureSettings();
-        if (s.proxy) proxySpeak(text, onEnd);
-        else if (s.key) azureSpeak(text, onEnd);
-        else browserSpeak(text, onEnd);
+        proxySpeak(text, onEnd);
       }
       function stopSpeaking() {
         speechSynthesis.cancel();
@@ -966,7 +812,7 @@
           currentAudio = null;
         }
       }
-      if ('speechSynthesis' in window) speechSynthesis.getVoices(); // 보이스 프리로드
+      if ('speechSynthesis' in window) speechSynthesis.getVoices();
 
       /* ---------- 화면 상태 ---------- */
       function setPhase(p, label) {
@@ -1026,7 +872,7 @@
           return;
         }
         saveSettings();
-        order = shuffle(picked); // 선택한 문장을 무작위 순서로
+        order = shuffle(picked);
         cursor = -1;
         running = true;
         els.startBtn.disabled = true;
@@ -1123,7 +969,8 @@
       els.addBtn.onclick = () => {
         const text = els.newQ.value.trim();
         if (!text) return;
-        addQuestion(text);
+        const topic = els.newTopic.value.trim();
+        addQuestion(text, topic);
         els.newQ.value = '';
         els.newQ.focus();
       };
@@ -1141,26 +988,8 @@
         renderList();
       };
 
-      ['ttsProxy', 'azureKey', 'azureRegion', 'azureVoice'].forEach((id) => {
-        els[id].addEventListener('change', () => {
-          saveAzure();
-          audioCache.clear();
-        });
-      });
-      els.ttsTestBtn.onclick = () => {
-        saveAzure();
-        els.ttsTestBtn.disabled = true;
-        speak('This is a voice test for the TOEIC Speaking drill.', () => {
-          els.ttsTestBtn.disabled = false;
-        });
-        setTimeout(() => {
-          els.ttsTestBtn.disabled = false;
-        }, 10000); // 안전장치
-      };
-
       /* ---------- 초기화 ---------- */
       loadSettings();
-      loadAzure();
       initStore();
     </script>
   </body>
