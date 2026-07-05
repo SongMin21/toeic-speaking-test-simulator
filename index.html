@@ -514,10 +514,12 @@
             <span id="selCount">0</span>개
           </h2>
           <div class="list-head-btns">
+            <button class="mini" id="randomTopicBtn">주제별 랜덤</button>
             <button class="mini" id="selectAllBtn">전체 선택</button>
             <button class="mini" id="clearAllBtn">전체 해제</button>
           </div>
         </div>
+        <div id="majorBtns" style="display:none; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
         <ul class="qlist" id="qList"></ul>
         <p class="empty" id="emptyMsg">아직 등록된 문장이 없습니다.</p>
       </section>
@@ -654,6 +656,57 @@
         renderList();
       }
 
+      /* ---------- 대주제/소주제 파싱 ---------- */
+      function parseTopic(topicStr) {
+        const m = (topicStr || '').match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
+        if (m) return { major: m[1].trim(), minor: m[2].trim() };
+        return { major: null, minor: topicStr || '' };
+      }
+      function getMajorGroups() {
+        // major → Map(minor → questions[])
+        const majors = new Map();
+        questions.forEach((q) => {
+          const { major, minor } = parseTopic(q.topic);
+          if (!major) return;
+          if (!majors.has(major)) majors.set(major, new Map());
+          const minors = majors.get(major);
+          if (!minors.has(minor)) minors.set(minor, []);
+          minors.get(minor).push(q);
+        });
+        return majors;
+      }
+      function selectByMajor(majorName) {
+        const minors = getMajorGroups().get(majorName);
+        if (!minors) return;
+        selected.clear();
+        minors.forEach((qs) => {
+          const pick = qs[Math.floor(Math.random() * qs.length)];
+          selected.add(pick.id);
+        });
+        saveSelected();
+        renderList();
+      }
+      function renderMajorBtns() {
+        const container = $('majorBtns');
+        const majors = getMajorGroups();
+        container.innerHTML = '';
+        if (!majors.size) {
+          container.style.display = 'none';
+          return;
+        }
+        container.style.display = 'flex';
+        majors.forEach((_, name) => {
+          const btn = document.createElement('button');
+          btn.className = 'mini';
+          btn.textContent = name;
+          btn.style.background = 'var(--answer-bg)';
+          btn.style.color = 'var(--answer)';
+          btn.style.borderColor = 'var(--answer)';
+          btn.onclick = () => selectByMajor(name);
+          container.appendChild(btn);
+        });
+      }
+
       /* ---------- 목록 렌더 (주제별 그룹) ---------- */
       function renderList() {
         const ids = new Set(questions.map((q) => q.id));
@@ -665,6 +718,7 @@
         els.selCount.textContent = selected.size;
         els.emptyMsg.style.display = questions.length ? 'none' : 'block';
         els.qList.innerHTML = '';
+        renderMajorBtns();
 
         // 주제별 그룹화 (입력 순서 유지)
         const groups = new Map();
@@ -977,6 +1031,21 @@
       els.newQ.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) els.addBtn.click();
       });
+      $('randomTopicBtn').onclick = () => {
+        const groups = new Map();
+        questions.forEach((q) => {
+          const key = q.topic || '';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(q);
+        });
+        selected.clear();
+        groups.forEach((qs) => {
+          const pick = qs[Math.floor(Math.random() * qs.length)];
+          selected.add(pick.id);
+        });
+        saveSelected();
+        renderList();
+      };
       els.selectAllBtn.onclick = () => {
         questions.forEach((q) => selected.add(q.id));
         saveSelected();
